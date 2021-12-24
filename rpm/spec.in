@@ -2,7 +2,7 @@
 %define version #RPM_VERSION#
 %define release #RPM_RELEASE#
  
-Summary:       A web application firewall for the Apache HTTP server
+Summary:       OWASP ModSecurity Core Rule Set (CRS)
 Name:          %{name}
 Version:       %{version}
 Release:       %{release}%{?dist}
@@ -21,11 +21,22 @@ Requires: libxml2
 Requires: libinjection
  
 %description
-ModSecurity is an open source intrusion detection and prevention engine
-for web applications. It operates embedded into the web server, acting
-as a powerful umbrella - shielding web applications from both known and
-unknown attacks.
-
+The OWASP(R) ModSecurity Core Rule Set (CRS) is a set of generic attack 
+detection rules for use with ModSecurity or compatible web application firewalls. 
+The CRS aims to protect web applications from a wide range of attacks, 
+including the OWASP Top Ten, with a minimum of false alerts. 
+The CRS provides protection against many common attack categories, including:
+- SQL Injection (SQLi)
+- Cross Site Scripting (XSS)
+- Local File Inclusion (LFI)
+- Remote File Inclusion (RFI)
+- PHP Code Injection
+- Java Code Injection 	HTTPoxy
+- Shellshock
+- Unix/Windows Shell Injection
+- Session Fixation
+- Scripting/Scanner/Bot Detection
+- Metadata/Error Leakages
 This package provide the Core Rule Set
 
 
@@ -38,33 +49,42 @@ This package provide the Core Rule Set
 %build
 
 %install
-[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != "/" ] && %{__rm} -rf ${RPM_BUILD_ROOT}
-%{__mkdir_p} ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/conf.d
-%{__mkdir_p} ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d
-%{__mkdir_p} ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules
+# Directories
+%{__mkdir_p} %{buildroot}%{_sysconfdir}/httpd/conf.d
+%{__mkdir_p} %{buildroot}%{_sysconfdir}/httpd/modsecurity.d/activated_rules
+%{__mkdir_p} %{buildroot}%{_datarootdir}/mod_security_crs/rules
 
-%{__install} -m 0644 mod_security_crs.conf ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/conf.d/mod_security_crs.conf
-%{__install} -m 0644 crs-setup.conf.example ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/crs-setup.conf
-%{__install} -m 0644 rules/* ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules/
-%{__mv} ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example\
- ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
-%{__mv} ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example\
- ${RPM_BUILD_ROOT}%{_sysconfdir}/httpd/modsecurity.d/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf
+# Config files
+%{__install} -m 0644 mod_security_crs.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/mod_security_crs.conf
+%{__install} -m 0644 crs-setup.conf.example %{buildroot}%{_sysconfdir}/httpd/modsecurity.d/crs-setup.conf
 
-%postun
-# Restart after erase/upgrade
-/sbin/service httpd condrestart >/dev/null 2>&1 || :
+# Exclusion rules
+%{__mv} rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example\
+ %{buildroot}%{_sysconfdir}/httpd/modsecurity.d/activated_rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
+%{__mv} rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example\
+ %{buildroot}%{_sysconfdir}/httpd/modsecurity.d/activated_rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf
 
+# Provided rules
+%{__install} -m 0644 rules/* %{buildroot}%{_datarootdir}/mod_security_crs/rules/
+
+# Activate all provided rules
+for RULE in $(ls %{buildroot}%{_datarootdir}/mod_security_crs/rules) ; do
+  ln -s %{_datarootdir}/mod_security_crs/rules/${RULE}\
+    %{buildroot}%{_sysconfdir}/httpd/modsecurity.d/activated_rules/${RULE};
+done
 
 %clean
-[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != "/" ] && %{__rm} -rf ${RPM_BUILD_ROOT}
+[ -n "%{buildroot}" -a "%{buildroot}" != "/" ] && %{__rm} -rf %{buildroot}
 
 
 %files
 %defattr(-,root,root)
-%doc CHANGES LICENSE INSTALL README.md
+%license LICENSE
+%doc CHANGES INSTALL README.md
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/mod_security_crs.conf
-%config(noreplace) %{_sysconfdir}/httpd/modsecurity.d/*
+%config(noreplace) %{_sysconfdir}/httpd/modsecurity.d/crs-setup.conf
+%config(noreplace) %{_sysconfdir}/httpd/modsecurity.d/activated_rules/*
+%{_datarootdir}/mod_security_crs
 
 %changelog
 %include %{_specdir}/changelog

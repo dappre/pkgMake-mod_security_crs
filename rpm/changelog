@@ -1,3 +1,6 @@
+* Fri Dec 24 2021 Infra Team <infra@dolden.net> - 3.3.2-2
+- Migrate spec to match Redhat source
+
 * Tue Dec 21 2021 Infra Team <infra@dolden.net> - 3.3.2-1
 - Upgrade to 3.3.2
 - From https://github.com/coreruleset/coreruleset/releases/tag/v3.3.2
